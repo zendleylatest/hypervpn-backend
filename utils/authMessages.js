@@ -1,0 +1,21 @@
+/** Auth error strings — aligned with sample_backend/messages/message.js */
+export const AUTH_MESSAGES = {
+  ALL_FIELDS_REQUIRED: 'email required',
+  EMAIL_REQUIRED: 'email required',
+  NAME_REQUIRED: 'name required',
+  PASSWORD_REQUIRED: 'password required',
+  USER_EXISTS: 'user already exists',
+  USER_NOT_FOUND: 'user not found',
+  WRONG_PASSWORD: 'wrong password',
+  SIGNED_UP: 'signed up',
+  SIGN_UP_FAILED: 'failed to sign up',
+  LOGGED_IN: 'login Successful',
+  NETWORK_ERROR: 'network error, try again',
+  OTP_SEND_FAILED: 'Failed to send OTP. Please try again.',
+  INVALID_OTP: 'Invalid OTP.',
+  EMAIL_NOT_VERIFIED: 'Email not verified.',
+  USER_ID_OTP_REQUIRED: 'userId and otp are required',
+  GOOGLE_TOKEN_INVALID: 'Invalid Google sign-in. Please try again.',
+  GOOGLE_NOT_CONFIGURED: 'Google sign-in is not configured on the server.',
+  GOOGLE_NO_EMAIL: 'Your Google account has no email address.',
+};
