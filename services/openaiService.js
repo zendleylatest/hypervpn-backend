@@ -1,24 +1,4 @@
-import OpenAI from 'openai';
-
-// Lazily construct the OpenAI client so we read process.env AFTER dotenv has
-// finished loading, regardless of which module is evaluated first.
-let _openai = null;
-let _warnedMissing = false;
-
-function getOpenAI() {
-  if (_openai) return _openai;
-  const key = process.env.OPENAI_API_KEY;
-  if (key && key.trim().length > 0) {
-    _openai = new OpenAI({ apiKey: key });
-    console.log('🤖 OpenAI client initialised (key …' + key.slice(-6) + ')');
-    return _openai;
-  }
-  if (!_warnedMissing) {
-    console.warn('⚠️  OPENAI_API_KEY not set. AI features will use fallback responses.');
-    _warnedMissing = true;
-  }
-  return null;
-}
+import { getOpenAI } from './openaiKeyService.js';
 
 // ---------------------------------------------------------------------------
 // Helper: Build a compact "user health & diet profile" from questionnaire data
@@ -268,7 +248,7 @@ Core rules:
  * Generate a single day's meal plan optimised for the user's Wellora goals.
  */
 export async function generateMealPlanDayWithAI(user, dailyCalorieTarget, dailyMacroTargets, dayNumber) {
-  const openai = getOpenAI();
+  const openai = await getOpenAI();
   if (!openai) return null;
   const timeout = 15000;
 
@@ -374,7 +354,7 @@ ${mealSchema}
  * Generate the full 7-day Wellora meal plan in one OpenAI call.
  */
 export async function generateMealPlanWithAI(user, dailyCalorieTarget, dailyMacroTargets) {
-  const openai = getOpenAI();
+  const openai = await getOpenAI();
   if (!openai) return null;
   const timeout = 35000;
 
@@ -481,7 +461,7 @@ ${mealSchema}
  * Decide whether a specific food/dish fits the user's diet goal.
  */
 export async function checkFoodSafetyWithAI(user, foodName, portion = '') {
-  const openai = getOpenAI();
+  const openai = await getOpenAI();
   if (!openai) return null;
   const timeout = 12000;
 
@@ -552,7 +532,7 @@ Return JSON only:
  * Suggest goal-friendly smart meal swaps for a food / craving.
  */
 export async function generateFoodSwapsWithAI(user, foodName) {
-  const openai = getOpenAI();
+  const openai = await getOpenAI();
   if (!openai) return null;
   const timeout = 12000;
 
@@ -621,7 +601,7 @@ Return JSON only:
  * optional list of meal names already planned).
  */
 export async function generateGroceryListWithAI(user, plannedMeals = []) {
-  const openai = getOpenAI();
+  const openai = await getOpenAI();
   if (!openai) return null;
   const timeout = 15000;
 
@@ -696,7 +676,7 @@ Return JSON only, with only as many categories as are actually needed (omit any 
 // ---------------------------------------------------------------------------
 
 export async function generateChatResponse(userMessage, user, chatHistory = []) {
-  const openai = getOpenAI();
+  const openai = await getOpenAI();
   if (!openai) {
     console.warn('OpenAI not initialized, returning null to use fallback response');
     return null;

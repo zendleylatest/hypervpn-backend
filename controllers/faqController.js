@@ -1,18 +1,8 @@
-import OpenAI from 'openai';
+import { getOpenAI } from '../services/openaiKeyService.js';
 import { getMergedKnowledgeText } from '../services/knowledgeStoreService.js';
 import { recordOpenAiUsage } from '../utils/trackUsage.js';
 
 const MAX_HISTORY_MESSAGES = 10;
-
-let _openai = null;
-function getOpenAI() {
-  if (_openai) return _openai;
-  const key = process.env.OPENAI_API_KEY?.trim();
-  if (key) {
-    _openai = new OpenAI({ apiKey: key });
-  }
-  return _openai;
-}
 
 /**
  * POST /api/faq/chat
@@ -51,7 +41,7 @@ export async function faqChat(req, res) {
       }
     }
 
-    const openai = getOpenAI();
+    const openai = await getOpenAI();
     if (!openai) {
       return res.json({
         success: true,

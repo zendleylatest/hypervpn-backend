@@ -1,12 +1,4 @@
-import OpenAI from 'openai';
-
-let _openai = null;
-function getOpenAI() {
-  if (_openai) return _openai;
-  const key = process.env.OPENAI_API_KEY;
-  if (key?.trim()) _openai = new OpenAI({ apiKey: key });
-  return _openai;
-}
+import { getOpenAI } from './openaiKeyService.js';
 
 function startOfDay(d = new Date()) {
   const x = new Date(d);
@@ -153,7 +145,7 @@ export async function parseNaturalLog(text, category = 'auto') {
     return { entries: [], source: 'empty' };
   }
 
-  const openai = getOpenAI();
+  const openai = await getOpenAI();
   if (!openai) {
     return parseWithHeuristics(text, category);
   }
