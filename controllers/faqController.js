@@ -1,4 +1,5 @@
 const OpenAI = require("openai");
+const { getOpenAiApiKey } = require("../services/openAiKeyService");
 const {
   getMergedKnowledgeText,
 } = require("../services/knowledgeStoreService");
@@ -8,11 +9,17 @@ const {
 
 const MAX_HISTORY_MESSAGES = 10;
 let openAiClient = null;
+let openAiClientKey = "";
 
-function getOpenAI() {
-  if (openAiClient) return openAiClient;
-  const key = process.env.OPENAI_API_KEY?.trim();
-  if (key) openAiClient = new OpenAI({ apiKey: key });
+// Rebuilt whenever the key changes, so a key rotated in the key service is
+// picked up without restarting the backend.
+async function getOpenAI() {
+  const key = await getOpenAiApiKey();
+  if (!key) return null;
+  if (!openAiClient || openAiClientKey !== key) {
+    openAiClient = new OpenAI({ apiKey: key });
+    openAiClientKey = key;
+  }
   return openAiClient;
 }
 
@@ -47,7 +54,7 @@ async function faqChat(req, res) {
       }
     }
 
-    const openai = getOpenAI();
+    const openai = await getOpenAI();
     if (!openai) {
       return res.json({
         success: true,

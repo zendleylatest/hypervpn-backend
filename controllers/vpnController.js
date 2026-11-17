@@ -511,14 +511,10 @@ async function getPlans(req, res) {
     success: true,
     plans: PLANS,
     features: [
-      "Unlimited VPN",
+      "30 GB of VPN data",
       "Hide your IP address",
       "Secure public Wi-Fi",
-      "Auto Connect",
-      "DNS leak protection",
       "Location selector",
-      "Split Tunneling",
-      "Ad-free experience",
     ],
   });
 }
