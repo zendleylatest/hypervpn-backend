@@ -3,7 +3,12 @@ const fs = require("fs");
 const path = require("path");
 const User = require("../models/usersModel");
 const VpnSession = require("../models/vpnSessionModel");
-const { subscriptionForUser, vpnQuotaForUser } = require("../utils/vpnQuota");
+const {
+  recordVpnUsage,
+  subscriptionForUser,
+  vpnPlanForUser,
+  vpnQuotaForUser,
+} = require("../utils/vpnQuota");
 const { verifyIapPurchase } = require("../services/iapVerificationService");
 
 const OVPN_DIR = path.resolve(__dirname, "..", "ovpn");
@@ -63,7 +68,7 @@ const VPN_SERVERS = [
     latencyMs: 35,
     loadPercent: 27,
     streamingOptimized: true,
-    premium: false,
+    premium: true,
     ovpnFile: "usavpn.ovpn",
   },
   {
@@ -274,11 +279,25 @@ function getVirtualIp(server) {
   return `10.${8 + (seed[0] % 8)}.${seed[1]}.${Math.max(2, seed[2])}`;
 }
 
+// Premium servers are for Pro accounts only.
+function premiumServerBlocked(server, user) {
+  return server?.premium === true && vpnPlanForUser(user) !== "pro";
+}
+
+function premiumServerResponse() {
+  return {
+    success: false,
+    code: "VPN_PREMIUM_SERVER_REQUIRED",
+    message: "This server is for Premium members.",
+    upgradeRequired: true,
+  };
+}
+
 function quotaLimitResponse(quota) {
   return {
     success: false,
     code: "VPN_QUOTA_LIMIT_REACHED",
-    message: "Upgrade to Pro to continue using VPN.",
+    message: "You have used all of your VPN data for this month.",
     upgradeRequired: true,
     quota,
   };
@@ -555,6 +574,9 @@ async function connect(req, res) {
         message: "VPN server not found.",
       });
     }
+    if (premiumServerBlocked(server, user)) {
+      return res.status(402).json(premiumServerResponse());
+    }
     const profilePath = getProfilePath(server);
     if (!profilePath) {
       console.warn("[vpn:connect:no-profile]", {
@@ -747,12 +769,10 @@ async function reportUsage(req, res) {
     session.usageBytes = Math.max(0, Number(session.usageBytes) || 0) + deltaBytes;
     await session.save();
 
-    const user = await User.findById(userId);
+    const user = await recordVpnUsage(User, userId, deltaBytes);
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found." });
     }
-    user.vpnUsageBytes = Math.max(0, Number(user.vpnUsageBytes) || 0) + deltaBytes;
-    await user.save();
     const quota = vpnQuotaForUser(user);
 
     if (quota.limitReached) {
@@ -906,6 +926,13 @@ async function getServerProfile(req, res) {
       success: false,
       message: "VPN server not found.",
     });
+  }
+
+  // The profile of a premium server is only handed to signed-in Pro accounts.
+  if (server.premium === true && premiumServerBlocked(server, req.authUser)) {
+    return res
+      .status(req.authUser ? 402 : 401)
+      .json(premiumServerResponse());
   }
 
   const profilePath = getProfilePath(server);

@@ -135,6 +135,12 @@ const userSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    // Calendar month (UTC, "YYYY-MM") that vpnUsageBytes belongs to.
+    vpnUsagePeriod: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     vpnAccountType: {
       type: String,
       enum: ["guest", "free", "pro"],

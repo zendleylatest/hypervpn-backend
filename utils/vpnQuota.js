@@ -19,6 +19,25 @@ const VPN_QUOTA_LIMITS = Object.freeze({
   },
 });
 
+// Data limits are monthly. Usage is counted per calendar month in UTC and
+// starts again from zero in the new month: whatever was left over is lost.
+function usagePeriodFor(date = new Date()) {
+  const d = date instanceof Date ? date : new Date(date);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+function nextResetAt(date = new Date()) {
+  const d = date instanceof Date ? date : new Date(date);
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1));
+}
+
+// Bytes used in the current month. A counter that belongs to an earlier month
+// (or has no month yet) counts as zero.
+function usedBytesThisPeriod(user, now = new Date()) {
+  if (!user || user.vpnUsagePeriod !== usagePeriodFor(now)) return 0;
+  return Math.max(0, Number(user.vpnUsageBytes) || 0);
+}
+
 function vpnPlanForUser(user) {
   if (!user) return "anonymous";
   if (user.isPro === true || user.subscription?.plan === "pro") return "pro";
@@ -26,7 +45,7 @@ function vpnPlanForUser(user) {
   return "free";
 }
 
-function vpnQuotaForUser(user) {
+function vpnQuotaForUser(user, now = new Date()) {
   if (!user) {
     return {
       accountType: "anonymous",
@@ -42,7 +61,7 @@ function vpnQuotaForUser(user) {
 
   const plan = vpnPlanForUser(user);
   const limits = VPN_QUOTA_LIMITS[plan] || VPN_QUOTA_LIMITS.free;
-  const usedBytes = Math.max(0, Number(user.vpnUsageBytes) || 0);
+  const usedBytes = usedBytesThisPeriod(user, now);
   const remainingBytes = Math.max(limits.limitBytes - usedBytes, 0);
 
   return {
@@ -56,6 +75,8 @@ function vpnQuotaForUser(user) {
     remainingLabel: formatBytes(remainingBytes),
     unlimited: false,
     limitReached: usedBytes >= limits.limitBytes,
+    period: usagePeriodFor(now),
+    resetsAt: nextResetAt(now).toISOString(),
   };
 }
 
@@ -130,6 +151,7 @@ function storedAccountFieldsForUser(user) {
     isGuest: user?.isGuest === true,
     isPro: user?.isPro === true,
     vpnUsageBytes: user?.vpnUsageBytes,
+    vpnUsagePeriod: user?.vpnUsagePeriod,
     subscription,
   });
   return {
@@ -140,8 +162,29 @@ function storedAccountFieldsForUser(user) {
   };
 }
 
+// Adds usage to the user's counter for the current month. Both steps are
+// single atomic updates, so two usage reports arriving together cannot lose
+// bytes, and only one of them performs the monthly reset.
+async function recordVpnUsage(User, userId, deltaBytes, now = new Date()) {
+  const period = usagePeriodFor(now);
+  await User.updateOne(
+    { _id: userId, vpnUsagePeriod: { $ne: period } },
+    { $set: { vpnUsageBytes: 0, vpnUsagePeriod: period, vpnUsageResetAt: now } }
+  );
+  return User.findByIdAndUpdate(
+    userId,
+    { $inc: { vpnUsageBytes: Math.max(0, Math.floor(Number(deltaBytes) || 0)) } },
+    { new: true }
+  );
+}
+
 module.exports = {
   VPN_QUOTA_LIMITS,
+  vpnPlanForUser,
+  nextResetAt,
+  recordVpnUsage,
+  usagePeriodFor,
+  usedBytesThisPeriod,
   formatBytes,
   storedAccountFieldsForUser,
   subscriptionForUser,

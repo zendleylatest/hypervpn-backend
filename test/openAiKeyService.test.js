@@ -46,6 +46,7 @@ test("reads the key from the key service", async () => {
 test("falls back to the env key when the service is not configured", async () => {
   delete process.env.OPENAI_KEY_SERVICE_URL;
   delete process.env.OPENAI_KEY_SERVICE_TOKEN;
+  delete process.env.ADMIN_TOKEN;
   process.env.OPENAI_API_KEY = "sk-from-env";
   resetOpenAiKeyCacheForTests();
   assert.equal(await getOpenAiApiKey(), "sk-from-env");

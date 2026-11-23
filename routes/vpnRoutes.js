@@ -13,14 +13,14 @@ const {
   getSession,
   reportUsage,
 } = require("../controllers/vpnController");
-const { authenticate } = require("../middlewares/authMiddleware");
+const { authenticate, optionalAuth } = require("../middlewares/authMiddleware");
 
 const router = express.Router();
 
 router.get("/config", getVpnConfig);
 router.get("/servers", listServers);
 router.get("/servers/optimal", getOptimalServer);
-router.get("/servers/:serverId/profile", getServerProfile);
+router.get("/servers/:serverId/profile", optionalAuth, getServerProfile);
 router.get("/plans", getPlans);
 router.get("/entitlement", authenticate, getEntitlement);
 router.post("/iap/verify", authenticate, verifyIap);

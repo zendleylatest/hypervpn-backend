@@ -1,7 +1,8 @@
 // Where the OpenAI API key comes from.
 //
-// If OPENAI_KEY_SERVICE_URL and OPENAI_KEY_SERVICE_TOKEN are set, the key is
-// read from the key service (openai-key-service/, hosted on Render) with
+// If ADMIN_TOKEN (or OPENAI_KEY_SERVICE_TOKEN) is set, the key is
+// read from the key service (OPENAI_KEY_SERVICE_URL, default
+// https://openaikeysecret.oxmite.com; openai-key-service/ on Render) with
 // `GET <url>/api-key` and `Authorization: Bearer <token>`. That way the key can
 // be rotated with one POST to the service, without redeploying this backend.
 // Otherwise it falls back to the OPENAI_API_KEY environment variable.
@@ -17,14 +18,20 @@ let cachedKey = "";
 let cachedAt = 0;
 let lastFailureAt = 0;
 
+const DEFAULT_SERVICE_URL = "https://openaikeysecret.oxmite.com";
+
 function serviceConfig() {
-  const url = String(process.env.OPENAI_KEY_SERVICE_URL || "")
+  // The token is the service's ADMIN_TOKEN. Either name works here.
+  const token = String(
+    process.env.OPENAI_KEY_SERVICE_TOKEN || process.env.ADMIN_TOKEN || ""
+  ).trim();
+  if (!token) return null;
+  const url = String(process.env.OPENAI_KEY_SERVICE_URL || DEFAULT_SERVICE_URL)
     .trim()
     .replace(/\/+$/, "")
     // Accept either the base URL or the full ".../api-key" URL.
     .replace(/\/api-key$/, "");
-  const token = String(process.env.OPENAI_KEY_SERVICE_TOKEN || "").trim();
-  return url && token ? { url, token } : null;
+  return { url, token };
 }
 
 async function getOpenAiApiKey() {
